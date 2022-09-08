@@ -31,6 +31,7 @@ bool prevSensorVal[4];
 bool sensorVal[4];
 
 char mode;
+char tmpMode;
 
 unsigned long lastCollissionMsgTime = 0;
 unsigned long lastCollissionCheck = 0;
@@ -145,12 +146,15 @@ void tableMode() {
 
 void moveManual(char dir) {
   movementState = dir;
+  tmpMode = mode;
+  mode = 'm'
   switch (dir) {
     case FORWARD_C: if(!collissionDetected) setMotorPins(HIGH, LOW, HIGH, LOW);break;
     case BACKWARD_C: setMotorPins(LOW, HIGH, LOW, HIGH);break;
     case LEFT_C: setMotorPins(LOW, LOW, HIGH, LOW);break;
     case RIGHT_C: setMotorPins(HIGH, LOW, LOW, LOW);break;
-    case STOP_C: setMotorPins(LOW, LOW, LOW, LOW);
+    case STOP_C: setMotorPins(LOW, LOW, LOW, LOW); break;
+    default:  mode = tmpMode;
   }
 }
 
