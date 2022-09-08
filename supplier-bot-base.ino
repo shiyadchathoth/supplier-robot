@@ -43,6 +43,7 @@ volatile unsigned long timerStart1, timerStart2, pulseDuration1, pulseDuration2;
 
 char movementState = 's';
 
+int distance1, distance2;
 
 void isr1() {
   echoState1 = digitalRead(echoPin1);
@@ -147,7 +148,7 @@ void tableMode() {
 void moveManual(char dir) {
   movementState = dir;
   tmpMode = mode;
-  mode = 'm'
+  mode = 'm';
   switch (dir) {
     case FORWARD_C: if(!collissionDetected) setMotorPins(HIGH, LOW, HIGH, LOW);break;
     case BACKWARD_C: setMotorPins(LOW, HIGH, LOW, HIGH);break;
@@ -178,8 +179,13 @@ void loop() {
   digitalWrite(trigPin, LOW);
   delay(50);
 
+  distance1 = pulseDuration1 * 0.034 / 2;
+  distance2 = pulseDuration2 * 0.034 / 2;
 
 
+  Serial.print(distance11);
+  Serial.print(" ");
+  Serial.println(distance2);
   if (mode == 'k') kitchenMode();
   else if (mode == 't') tableMode();
 
