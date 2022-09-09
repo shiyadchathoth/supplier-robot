@@ -30,7 +30,7 @@ IRSensorPin irSensor = { A3, A2, A0, A1 };
 bool prevSensorVal[4];
 bool sensorVal[4];
 
-char mode;
+char mode = 'm';
 char tmpMode;
 
 unsigned long lastCollissionMsgTime = 0;
@@ -41,9 +41,45 @@ bool collissionDetected = false;
 volatile bool echoState1, echoState2;
 volatile unsigned long timerStart1, timerStart2, pulseDuration1, pulseDuration2;
 
-char movementState = 's';
+char moveDir = 's';
 
 int distance1, distance2;
+
+struct BodyState {
+  int tablePoint; //10
+  int kitchenPoint;// 11
+  int pos;
+  int dir;
+  int motorPin1;
+  int motorPin2;
+};
+
+BodyState body = BodyState { 10, 11, 0, 0, A4, A5 };
+
+void moveBody(BodyState &body, int dir) {
+  digitalWrite(body.motorPin1, dir == -1);
+  digitalWrite(body.motorPin2, dir == 1);
+}
+
+void moveToTable(BodyState &body) {
+  if (body.dir != 0) return;
+  body.dir = 1; 
+}
+
+void moveToKitchen(BodyState &body) {
+  if (body.dir != 0) return;
+  body.dir = -1;
+}
+
+void updateBodyPos(BodyState &body) {
+  if (!digitalRead(body.tablePoint)) body.pos = 1;
+  else if (!digitalRead(body.kitchenPoint)) body.pos = -1;
+  else body.pos = 0;
+
+  if (body.dir == -1 && body.pos == -1) body.dir = 0; //stop moving if the limit has reached
+  if (body.dir == 1 && body.pos == 1) body.dir = 0;
+
+}
 
 void isr1() {
   echoState1 = digitalRead(echoPin1);
@@ -79,6 +115,11 @@ void setup() {
   pinMode(trigPin, OUTPUT);
   pinMode(echoPin1, INPUT);
   pinMode(echoPin2, INPUT);
+
+  pinMode(body.tablePoint, INPUT_PULLUP);
+  pinMode(body.kitchenPoint, INPUT_PULLUP);
+  pinMode(body.motorPin1, OUTPUT);
+  pinMode(body.motorPin2, OUTPUT);
   
 
   attachInterrupt(digitalPinToInterrupt(echoPin1), isr1, CHANGE);
@@ -94,7 +135,6 @@ void setMotorPins(bool mLp1, bool mLp2, bool mRp1, bool mRp2) {
 
 //dir: -1, 0, 1 : left, forward/backward, right
 void moveA(char dir, bool fwd = true) {
-  movementState = dir;
   switch (dir) {
     case 'f': setMotorPins(fwd, !fwd, fwd, !fwd); break;
     case 'r': setMotorPins(fwd, !fwd, !fwd, !fwd); break;
@@ -146,12 +186,16 @@ void tableMode() {
 
 
 void moveManual(char dir) {
-  movementState = dir;
+  moveDir = dir;
   tmpMode = mode;
   mode = 'm';
   switch (dir) {
-    case FORWARD_C: if(!collissionDetected) setMotorPins(HIGH, LOW, HIGH, LOW);break;
-    case BACKWARD_C: setMotorPins(LOW, HIGH, LOW, HIGH);break;
+    case FORWARD_C: setMotorPins(HIGH, LOW, HIGH, LOW);
+    moveToTable(body);
+    break;
+    case BACKWARD_C: setMotorPins(LOW, HIGH, LOW, HIGH);
+    moveToKitchen(body);
+    break;
     case LEFT_C: setMotorPins(LOW, LOW, HIGH, LOW);break;
     case RIGHT_C: setMotorPins(HIGH, LOW, LOW, LOW);break;
     case STOP_C: setMotorPins(LOW, LOW, LOW, LOW); break;
@@ -163,8 +207,14 @@ void loop() {
   if (Serial.available() > 0) {
     char c = Serial.read();
     moveManual(c);
-    if (c == GOTO_KITCHEN) mode = 'k';
-    if (c == GOTO_TABLE) mode = 't';
+    if (c == GOTO_KITCHEN) {
+      mode = 'k';
+      moveToKitchen(body);
+    }
+    if (c == GOTO_TABLE) {
+      mode = 't';
+      moveToTable(body);
+    }
   }
 
   sensorVal[3] = digitalRead(irSensor.frontL);
@@ -181,13 +231,26 @@ void loop() {
 
   distance1 = pulseDuration1 * 0.034 / 2;
   distance2 = pulseDuration2 * 0.034 / 2;
-
-
-  Serial.print(distance11);
-  Serial.print(" ");
-  Serial.println(distance2);
-  if (mode == 'k') kitchenMode();
-  else if (mode == 't') tableMode();
+  collissionDetected = distance1 < 20 || distance2 < 20;
+  
+  if (mode == 'k' && !collissionDetected) kitchenMode();
+  else if (mode == 't' && !collissionDetected) tableMode();
+  else if (mode != 'm' && collissionDetected) {
+    setMotorPins(LOW, LOW, LOW, LOW);
+    if (lastCollissionMsgTime == 0 || millis() - lastCollissionMsgTime > 2000) {
+        Serial.print('O');
+        lastCollissionMsgTime = millis();
+      }
+  } else if (mode == 'm' && collissionDetected && (moveDir == FORWARD_C || moveDir == BACKWARD_C)) {
+      setMotorPins(LOW, LOW, LOW, LOW);
+      if (lastCollissionMsgTime == 0 || millis() - lastCollissionMsgTime > 2000) {
+        Serial.print('O');
+        lastCollissionMsgTime = millis();
+      }
+  }
 
   for(int i = 0; i < 4; i++) prevSensorVal[i] = sensorVal[i];
+
+  updateBodyPos(body);
+  moveBody(body, body.dir);
 }
