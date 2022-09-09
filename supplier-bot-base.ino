@@ -191,10 +191,10 @@ void moveManual(char dir) {
   mode = 'm';
   switch (dir) {
     case FORWARD_C: setMotorPins(HIGH, LOW, HIGH, LOW);
-    moveToTable(body);
+    moveToKitchen(body);
     break;
     case BACKWARD_C: setMotorPins(LOW, HIGH, LOW, HIGH);
-    moveToKitchen(body);
+    moveToTable(body);
     break;
     case LEFT_C: setMotorPins(LOW, LOW, HIGH, LOW);break;
     case RIGHT_C: setMotorPins(HIGH, LOW, LOW, LOW);break;
@@ -217,10 +217,10 @@ void loop() {
     }
   }
 
-  sensorVal[3] = digitalRead(irSensor.frontL);
-  sensorVal[2] = digitalRead(irSensor.frontR);
-  sensorVal[1] = digitalRead(irSensor.backL);
-  sensorVal[0] = digitalRead(irSensor.backR);
+  sensorVal[3] = !digitalRead(irSensor.frontL);
+  sensorVal[2] = !digitalRead(irSensor.frontR);
+  sensorVal[1] = !digitalRead(irSensor.backL);
+  sensorVal[0] = !digitalRead(irSensor.backR);
 
   digitalWrite(trigPin, LOW);
   delayMicroseconds(2);
@@ -231,7 +231,7 @@ void loop() {
 
   distance1 = pulseDuration1 * 0.034 / 2;
   distance2 = pulseDuration2 * 0.034 / 2;
-  collissionDetected = distance1 < 20 || distance2 < 20;
+  //collissionDetected = distance1 < 20 || distance2 < 20;
   
   if (mode == 'k' && !collissionDetected) kitchenMode();
   else if (mode == 't' && !collissionDetected) tableMode();
@@ -248,6 +248,7 @@ void loop() {
         lastCollissionMsgTime = millis();
       }
   }
+
 
   for(int i = 0; i < 4; i++) prevSensorVal[i] = sensorVal[i];
 
