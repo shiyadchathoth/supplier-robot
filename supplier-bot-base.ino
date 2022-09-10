@@ -231,7 +231,7 @@ void loop() {
 
   distance1 = pulseDuration1 * 0.034 / 2;
   distance2 = pulseDuration2 * 0.034 / 2;
-  collissionDetected = distance1 < 20 || distance2 < 20;
+  collissionDetected = distance1 < 40 || distance2 < 40;
   
   if (mode == 'k') kitchenMode();
   else if (mode == 't' && !collissionDetected) tableMode();
