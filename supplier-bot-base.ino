@@ -231,9 +231,9 @@ void loop() {
 
   distance1 = pulseDuration1 * 0.034 / 2;
   distance2 = pulseDuration2 * 0.034 / 2;
-  //collissionDetected = distance1 < 20 || distance2 < 20;
+  collissionDetected = distance1 < 20 || distance2 < 20;
   
-  if (mode == 'k' && !collissionDetected) kitchenMode();
+  if (mode == 'k') kitchenMode();
   else if (mode == 't' && !collissionDetected) tableMode();
   else if (mode != 'm' && collissionDetected) {
     setMotorPins(LOW, LOW, LOW, LOW);
@@ -241,7 +241,7 @@ void loop() {
         Serial.print('O');
         lastCollissionMsgTime = millis();
       }
-  } else if (mode == 'm' && collissionDetected && (moveDir == FORWARD_C || moveDir == BACKWARD_C)) {
+  } else if (mode == 'm' && collissionDetected && moveDir == FORWARD_C) {
       setMotorPins(LOW, LOW, LOW, LOW);
       if (lastCollissionMsgTime == 0 || millis() - lastCollissionMsgTime > 2000) {
         Serial.print('O');
